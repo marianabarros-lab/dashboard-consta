@@ -30,6 +30,28 @@
       --blue-soft: rgba(96,165,250,0.12);
     }
 
+    [data-theme="light"] {
+      --bg: #f5f5f7;
+      --surface: #ffffff;
+      --surface2: #f0f0f2;
+      --surface3: #e8e8ec;
+      --border: #d0d0d8;
+      --border-active: #b0b0b8;
+      --text: #1a1a1f;
+      --text-m: #505060;
+      --text-d: #808090;
+      --accent: #7c3aed;
+      --accent-glow: rgba(124,58,237,0.15);
+      --green: #22c55e;
+      --green-soft: rgba(34,197,94,0.15);
+      --red: #ef4444;
+      --red-soft: rgba(239,68,68,0.15);
+      --yellow: #f59e0b;
+      --yellow-soft: rgba(245,158,11,0.15);
+      --blue: #3b82f6;
+      --blue-soft: rgba(59,130,246,0.15);
+    }
+
     * { margin: 0; padding: 0; box-sizing: border-box; }
 
     body {
@@ -47,6 +69,15 @@
       background: radial-gradient(ellipse at 50% 0%, rgba(167,139,250,0.06) 0%, transparent 60%);
       pointer-events: none;
       z-index: 0;
+      transition: opacity 0.3s;
+    }
+
+    [data-theme="light"] body::before {
+      opacity: 0.5;
+    }
+
+    [data-theme="light"] .period-inputs input[type="date"]::-webkit-calendar-picker-indicator {
+      filter: none;
     }
 
     .app {
@@ -75,11 +106,37 @@
 
     .header h1 span { color: var(--accent); }
 
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
     .header .meta {
       font-family: 'JetBrains Mono', monospace;
       font-size: 12px;
       color: var(--text-d);
       text-align: right;
+    }
+
+    .theme-toggle {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      width: 44px;
+      height: 44px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.3s;
+      font-size: 20px;
+    }
+
+    .theme-toggle:hover {
+      background: var(--surface3);
+      border-color: var(--accent);
+      transform: scale(1.05);
     }
 
     .live-badge {
@@ -348,6 +405,63 @@
       color: #fff;
     }
 
+    /* Period Filter */
+    .period-filter {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+
+    .period-label, .brand-label {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-m);
+    }
+
+    .brand-label {
+      margin-bottom: 10px;
+    }
+
+    .period-inputs {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .period-inputs input[type="date"] {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px 12px;
+      color: var(--text);
+      font-family: 'Outfit', sans-serif;
+      font-size: 13px;
+      outline: none;
+      transition: all 0.2s;
+    }
+
+    .period-inputs input[type="date"]:focus {
+      border-color: var(--accent);
+    }
+
+    .period-inputs input[type="date"]::-webkit-calendar-picker-indicator {
+      filter: invert(0.7);
+      cursor: pointer;
+    }
+
+    .period-inputs span {
+      color: var(--text-d);
+      font-size: 13px;
+    }
+
+    .btn-sm {
+      padding: 8px 14px;
+      font-size: 12px;
+    }
+
     /* Table */
     .table-container {
       overflow-x: auto;
@@ -466,9 +580,14 @@
       <div>
         <h1>📦 Dashboard <span>Confirmações</span></h1>
       </div>
-      <div class="meta">
-        <div class="live-badge" id="statusBadge" style="display: none;">LIVE</div>
-        <div id="lastUpdate"></div>
+      <div class="header-right">
+        <button class="theme-toggle" id="themeToggle" onclick="toggleTheme()" title="Alternar tema">
+          <span class="theme-icon" id="themeIcon">🌙</span>
+        </button>
+        <div class="meta">
+          <div class="live-badge" id="statusBadge" style="display: none;">LIVE</div>
+          <div id="lastUpdate"></div>
+        </div>
       </div>
     </header>
 
@@ -508,9 +627,26 @@
       </div>
     </div>
 
-    <!-- Brand Filter -->
+    <!-- Filters -->
     <div class="section">
-      <div class="section-title">Filtrar por Marca</div>
+      <div class="section-title">Filtros</div>
+      
+      <!-- Period Filter -->
+      <div class="period-filter">
+        <div class="period-label">📅 Período:</div>
+        <div class="period-inputs">
+          <input type="date" id="dateStart" onchange="applyFilters()">
+          <span>até</span>
+          <input type="date" id="dateEnd" onchange="applyFilters()">
+          <button class="btn btn-secondary btn-sm" onclick="clearPeriod()">Limpar</button>
+          <button class="btn btn-secondary btn-sm" onclick="setPeriod('today')">Hoje</button>
+          <button class="btn btn-secondary btn-sm" onclick="setPeriod('week')">7 dias</button>
+          <button class="btn btn-secondary btn-sm" onclick="setPeriod('month')">30 dias</button>
+        </div>
+      </div>
+      
+      <!-- Brand Filter -->
+      <div class="brand-label">🏷️ Marca:</div>
       <div class="brand-filter" id="brandFilter"></div>
     </div>
 
@@ -569,11 +705,43 @@
 
   <script>
     // ══════════════════════════════════════
+    // THEME TOGGLE
+    // ══════════════════════════════════════
+    function toggleTheme() {
+      const html = document.documentElement;
+      const currentTheme = html.getAttribute('data-theme');
+      const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+      
+      html.setAttribute('data-theme', newTheme);
+      localStorage.setItem('dashboard_theme', newTheme);
+      
+      updateThemeIcon(newTheme);
+      
+      // Re-renderizar gráficos com novas cores
+      if (allData.length > 0) {
+        render();
+      }
+    }
+
+    function updateThemeIcon(theme) {
+      const icon = document.getElementById('themeIcon');
+      icon.textContent = theme === 'light' ? '☀️' : '🌙';
+    }
+
+    function loadSavedTheme() {
+      const saved = localStorage.getItem('dashboard_theme') || 'dark';
+      document.documentElement.setAttribute('data-theme', saved);
+      updateThemeIcon(saved);
+    }
+
+    // ══════════════════════════════════════
     // STATE
     // ══════════════════════════════════════
     let allData = [];
     let filteredData = [];
     let currentBrand = 'all';
+    let dateStart = null;
+    let dateEnd = null;
     let charts = {};
     let refreshInterval = null;
 
@@ -590,14 +758,95 @@
     }
 
     // ══════════════════════════════════════
+    // DATE HELPERS
+    // ══════════════════════════════════════
+    function parseDate(dateStr) {
+      if (!dateStr) return null;
+      // Formato: dd/mm/yyyy
+      const parts = dateStr.split('/');
+      if (parts.length === 3) {
+        return new Date(parts[2], parts[1] - 1, parts[0]);
+      }
+      return null;
+    }
+
+    function formatDateISO(date) {
+      const d = new Date(date);
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    }
+
+    function setPeriod(preset) {
+      const today = new Date();
+      let start = new Date();
+      
+      switch(preset) {
+        case 'today':
+          start = today;
+          break;
+        case 'week':
+          start.setDate(today.getDate() - 7);
+          break;
+        case 'month':
+          start.setDate(today.getDate() - 30);
+          break;
+      }
+      
+      document.getElementById('dateStart').value = formatDateISO(start);
+      document.getElementById('dateEnd').value = formatDateISO(today);
+      applyFilters();
+    }
+
+    function clearPeriod() {
+      document.getElementById('dateStart').value = '';
+      document.getElementById('dateEnd').value = '';
+      applyFilters();
+    }
+
+    function applyFilters() {
+      const startVal = document.getElementById('dateStart').value;
+      const endVal = document.getElementById('dateEnd').value;
+      
+      dateStart = startVal ? new Date(startVal + 'T00:00:00') : null;
+      dateEnd = endVal ? new Date(endVal + 'T23:59:59') : null;
+      
+      filterData();
+    }
+
+    function filterData() {
+      filteredData = allData.filter(d => {
+        // Filtro por marca
+        if (currentBrand !== 'all' && d.marca !== currentBrand) return false;
+        
+        // Filtro por período
+        if (dateStart || dateEnd) {
+          const rowDate = parseDate(d.data);
+          if (!rowDate) return false;
+          if (dateStart && rowDate < dateStart) return false;
+          if (dateEnd && rowDate > dateEnd) return false;
+        }
+        
+        return true;
+      });
+      
+      render();
+    }
+
+    // ══════════════════════════════════════
     // INIT
     // ══════════════════════════════════════
+    const DEFAULT_SHEET_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vR4L_fzPoWVlqnVqWaskUO4NNOmQ3i3UNM1ZyZVY6ZbmmrxI5DYvVrsnrOpXJrXzUORr4of86mBRATf/pub?gid=0&single=true&output=csv';
+
     window.addEventListener('DOMContentLoaded', () => {
-      const saved = localStorage.getItem('dashboard_sheet_url');
-      if (saved) {
-        document.getElementById('sheetUrl').value = saved;
-        connectSheet();
-      }
+      // Carrega tema salvo
+      loadSavedTheme();
+      
+      // Usa URL salva ou a padrão embutida
+      const saved = localStorage.getItem('dashboard_sheet_url') || DEFAULT_SHEET_URL;
+      document.getElementById('sheetUrl').value = saved;
+      connectSheet();
     });
 
     // ══════════════════════════════════════
@@ -617,11 +866,12 @@
     }
 
     function fetchData() {
-      const url = localStorage.getItem('dashboard_sheet_url');
+      const url = localStorage.getItem('dashboard_sheet_url') || DEFAULT_SHEET_URL;
       if (!url) return;
 
       document.getElementById('loading').classList.add('active');
 
+      // Tenta direto primeiro, se falhar usa proxy
       Papa.parse(url, {
         download: true,
         header: true,
@@ -632,17 +882,40 @@
           document.getElementById('emptyState').style.display = 'none';
           
           allData = normalizeData(results.data);
-          filteredData = allData;
           
           renderBrandFilter();
-          render();
+          filterData();
           
           document.getElementById('lastUpdate').textContent = 
             'Atualizado: ' + new Date().toLocaleTimeString('pt-BR');
         },
         error: function(err) {
-          document.getElementById('loading').classList.remove('active');
-          alert('Erro ao carregar dados: ' + err.message);
+          // Se falhar por CORS, tenta com proxy
+          const proxyUrl = 'https://api.allorigins.win/raw?url=' + encodeURIComponent(url);
+          
+          Papa.parse(proxyUrl, {
+            download: true,
+            header: true,
+            skipEmptyLines: true,
+            complete: function(results) {
+              document.getElementById('loading').classList.remove('active');
+              document.getElementById('statusBadge').style.display = 'flex';
+              document.getElementById('emptyState').style.display = 'none';
+              
+              allData = normalizeData(results.data);
+              
+              renderBrandFilter();
+              filterData();
+              
+              document.getElementById('lastUpdate').textContent = 
+                'Atualizado: ' + new Date().toLocaleTimeString('pt-BR');
+            },
+            error: function(err2) {
+              document.getElementById('loading').classList.remove('active');
+              console.error('Erro:', err2);
+              alert('Não foi possível carregar os dados. Tente novamente ou verifique se a planilha está publicada corretamente.');
+            }
+          });
         }
       });
     }
@@ -672,11 +945,24 @@
     function getStatus(confirmacao) {
       if (!confirmacao) return 'unknown';
       const c = confirmacao.toLowerCase();
-      if (c.includes('sim') || c.includes('reconheço') || c.includes('encontrei') || c.includes('tudo certo')) {
-        if (!c.includes('não')) return 'reconheco';
+      
+      // ✅ Reconheço (inclui "Sim, reconheço" e "Encontrei, está tudo certo")
+      if (c.includes('sim, reconheço') || c.includes('sim reconheço') || 
+          c.includes('encontrei') || c.includes('tudo certo') ||
+          (c.includes('reconheço') && !c.includes('não'))) {
+        return 'reconheco';
       }
-      if (c.includes('não reconheço') || c.includes('nao reconheco')) return 'nao-reconheco';
-      if (c.includes('investigação') || c.includes('investigacao')) return 'investigacao';
+      
+      // ❌ Não reconheço
+      if (c.includes('não reconheço') || c.includes('nao reconheco')) {
+        return 'nao-reconheco';
+      }
+      
+      // 🔍 Investigação
+      if (c.includes('investigação') || c.includes('investigacao')) {
+        return 'investigacao';
+      }
+      
       return 'unknown';
     }
 
@@ -723,8 +1009,7 @@
         );
       });
       
-      filteredData = brand === 'all' ? allData : allData.filter(d => d.marca === brand);
-      render();
+      filterData();
     }
 
     // ══════════════════════════════════════
