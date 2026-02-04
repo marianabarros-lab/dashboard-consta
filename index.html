@@ -1,858 +1,982 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard de Confirmações de Entrega</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-            min-height: 100vh;
-            color: #fff;
-            padding: 20px;
-        }
-        
-        .container {
-            max-width: 1400px;
-            margin: 0 auto;
-        }
-        
-        header {
-            text-align: center;
-            margin-bottom: 30px;
-        }
-        
-        header h1 {
-            font-size: 2.5rem;
-            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            margin-bottom: 10px;
-        }
-        
-        header p {
-            color: #888;
-            font-size: 1.1rem;
-        }
-        
-        .upload-area {
-            background: rgba(255,255,255,0.05);
-            border: 2px dashed #667eea;
-            border-radius: 20px;
-            padding: 40px;
-            text-align: center;
-            margin-bottom: 30px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
-        
-        .upload-area:hover {
-            background: rgba(102, 126, 234, 0.1);
-            border-color: #764ba2;
-        }
-        
-        .upload-area.dragover {
-            background: rgba(102, 126, 234, 0.2);
-            transform: scale(1.02);
-        }
-        
-        .upload-icon {
-            font-size: 4rem;
-            margin-bottom: 15px;
-        }
-        
-        #fileInput {
-            display: none;
-        }
-        
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 20px;
-            margin-bottom: 30px;
-        }
-        
-        .stat-card {
-            background: rgba(255,255,255,0.05);
-            border-radius: 15px;
-            padding: 25px;
-            text-align: center;
-            border: 1px solid rgba(255,255,255,0.1);
-            transition: transform 0.3s ease;
-        }
-        
-        .stat-card:hover {
-            transform: translateY(-5px);
-        }
-        
-        .stat-card.green { border-left: 4px solid #4ade80; }
-        .stat-card.red { border-left: 4px solid #f87171; }
-        .stat-card.yellow { border-left: 4px solid #fbbf24; }
-        .stat-card.blue { border-left: 4px solid #60a5fa; }
-        
-        .stat-value {
-            font-size: 2.5rem;
-            font-weight: bold;
-            margin-bottom: 5px;
-        }
-        
-        .stat-label {
-            color: #888;
-            font-size: 0.9rem;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-        
-        .charts-section {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
-            gap: 20px;
-            margin-bottom: 30px;
-        }
-        
-        .chart-card {
-            background: rgba(255,255,255,0.05);
-            border-radius: 15px;
-            padding: 25px;
-            border: 1px solid rgba(255,255,255,0.1);
-        }
-        
-        .chart-card h3 {
-            margin-bottom: 20px;
-            color: #667eea;
-            font-size: 1.2rem;
-        }
-        
-        .brand-filter {
-            background: rgba(255,255,255,0.05);
-            border-radius: 15px;
-            padding: 20px;
-            margin-bottom: 30px;
-            border: 1px solid rgba(255,255,255,0.1);
-        }
-        
-        .brand-filter h3 {
-            margin-bottom: 15px;
-            color: #667eea;
-        }
-        
-        .brand-buttons {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 10px;
-        }
-        
-        .brand-btn {
-            background: rgba(102, 126, 234, 0.2);
-            border: 1px solid #667eea;
-            color: #fff;
-            padding: 10px 20px;
-            border-radius: 25px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            font-size: 0.9rem;
-        }
-        
-        .brand-btn:hover, .brand-btn.active {
-            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
-            border-color: transparent;
-        }
-        
-        .brand-dashboard {
-            display: none;
-            background: rgba(255,255,255,0.05);
-            border-radius: 15px;
-            padding: 25px;
-            margin-bottom: 30px;
-            border: 1px solid rgba(255,255,255,0.1);
-        }
-        
-        .brand-dashboard.visible {
-            display: block;
-            animation: fadeIn 0.5s ease;
-        }
-        
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        
-        .brand-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 25px;
-            padding-bottom: 15px;
-            border-bottom: 1px solid rgba(255,255,255,0.1);
-        }
-        
-        .brand-header h2 {
-            font-size: 1.8rem;
-            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
-        
-        .brand-stats {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 15px;
-            margin-bottom: 25px;
-        }
-        
-        .brand-stat {
-            background: rgba(0,0,0,0.2);
-            border-radius: 10px;
-            padding: 15px;
-            text-align: center;
-        }
-        
-        .brand-stat-value {
-            font-size: 1.8rem;
-            font-weight: bold;
-        }
-        
-        .brand-stat-label {
-            font-size: 0.8rem;
-            color: #888;
-            margin-top: 5px;
-        }
-        
-        .progress-bar {
-            background: rgba(255,255,255,0.1);
-            border-radius: 10px;
-            height: 30px;
-            overflow: hidden;
-            display: flex;
-            margin-bottom: 20px;
-        }
-        
-        .progress-segment {
-            height: 100%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 0.8rem;
-            font-weight: bold;
-            transition: width 0.5s ease;
-        }
-        
-        .progress-segment.green { background: #4ade80; color: #000; }
-        .progress-segment.red { background: #f87171; color: #000; }
-        .progress-segment.yellow { background: #fbbf24; color: #000; }
-        
-        .table-container {
-            overflow-x: auto;
-            margin-top: 20px;
-        }
-        
-        table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-        
-        th, td {
-            padding: 12px 15px;
-            text-align: left;
-            border-bottom: 1px solid rgba(255,255,255,0.1);
-        }
-        
-        th {
-            background: rgba(102, 126, 234, 0.2);
-            font-weight: 600;
-            text-transform: uppercase;
-            font-size: 0.8rem;
-            letter-spacing: 1px;
-        }
-        
-        tr:hover {
-            background: rgba(255,255,255,0.05);
-        }
-        
-        .status-badge {
-            padding: 5px 12px;
-            border-radius: 20px;
-            font-size: 0.85rem;
-            font-weight: 500;
-        }
-        
-        .status-badge.reconheco { background: rgba(74, 222, 128, 0.2); color: #4ade80; }
-        .status-badge.nao-reconheco { background: rgba(248, 113, 113, 0.2); color: #f87171; }
-        .status-badge.investigacao { background: rgba(251, 191, 36, 0.2); color: #fbbf24; }
-        
-        .insights {
-            background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
-            border-radius: 15px;
-            padding: 20px;
-            margin-top: 20px;
-        }
-        
-        .insights h4 {
-            color: #667eea;
-            margin-bottom: 15px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-        
-        .insight-item {
-            padding: 10px 0;
-            border-bottom: 1px solid rgba(255,255,255,0.05);
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-        
-        .insight-item:last-child {
-            border-bottom: none;
-        }
-        
-        .hidden {
-            display: none;
-        }
-        
-        @media (max-width: 768px) {
-            .brand-stats {
-                grid-template-columns: repeat(2, 1fr);
-            }
-            
-            .charts-section {
-                grid-template-columns: 1fr;
-            }
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard Confirmações</title>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+  <style>
+    :root {
+      --bg: #08080c;
+      --surface: #0f0f14;
+      --surface2: #16161d;
+      --surface3: #1c1c26;
+      --border: #2a2a3a;
+      --border-active: #3a3a4f;
+      --text: #f0f0f5;
+      --text-m: #a0a0b0;
+      --text-d: #606070;
+      --accent: #a78bfa;
+      --accent-glow: rgba(167,139,250,0.15);
+      --green: #4ade80;
+      --green-soft: rgba(74,222,128,0.12);
+      --red: #f87171;
+      --red-soft: rgba(248,113,113,0.12);
+      --yellow: #fbbf24;
+      --yellow-soft: rgba(251,191,36,0.12);
+      --blue: #60a5fa;
+      --blue-soft: rgba(96,165,250,0.12);
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Outfit', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      line-height: 1.5;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: radial-gradient(ellipse at 50% 0%, rgba(167,139,250,0.06) 0%, transparent 60%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .app {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 32px 24px;
+      position: relative;
+      z-index: 1;
+    }
+
+    /* Header */
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 32px;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+
+    .header h1 {
+      font-size: 28px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+    }
+
+    .header h1 span { color: var(--accent); }
+
+    .header .meta {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      color: var(--text-d);
+      text-align: right;
+    }
+
+    .live-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--green-soft);
+      color: var(--green);
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+
+    .live-badge::before {
+      content: '';
+      width: 6px;
+      height: 6px;
+      background: var(--green);
+      border-radius: 50%;
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+
+    /* Connection Bar */
+    .conn-section {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 20px;
+      margin-bottom: 28px;
+    }
+
+    .conn-section h3 {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text-m);
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .conn-bar {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .conn-bar input {
+      flex: 1;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px 16px;
+      color: var(--text);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px;
+      outline: none;
+      transition: all 0.2s;
+    }
+
+    .conn-bar input:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-glow);
+    }
+
+    .conn-bar input::placeholder { color: var(--text-d); }
+
+    .btn {
+      padding: 12px 24px;
+      border: none;
+      border-radius: 10px;
+      font-family: 'Outfit', sans-serif;
+      font-weight: 600;
+      font-size: 13px;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--accent) 0%, #8b5cf6 100%);
+      color: #fff;
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px rgba(167,139,250,0.3);
+    }
+
+    .btn-secondary {
+      background: var(--surface3);
+      color: var(--text-m);
+    }
+
+    .btn-secondary:hover {
+      background: var(--border);
+      color: var(--text);
+    }
+
+    .conn-help {
+      margin-top: 12px;
+      font-size: 12px;
+      color: var(--text-d);
+    }
+
+    .conn-help code {
+      background: var(--surface2);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    /* Stats Grid */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 16px;
+      margin-bottom: 28px;
+    }
+
+    .stat-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 20px;
+      position: relative;
+      overflow: hidden;
+      transition: all 0.3s;
+    }
+
+    .stat-card:hover {
+      transform: translateY(-4px);
+      border-color: var(--border-active);
+    }
+
+    .stat-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 3px;
+    }
+
+    .stat-card.green::before { background: var(--green); }
+    .stat-card.red::before { background: var(--red); }
+    .stat-card.yellow::before { background: var(--yellow); }
+    .stat-card.blue::before { background: var(--blue); }
+    .stat-card.purple::before { background: var(--accent); }
+
+    .stat-value {
+      font-size: 32px;
+      font-weight: 800;
+      letter-spacing: -1px;
+      margin-bottom: 4px;
+    }
+
+    .stat-card.green .stat-value { color: var(--green); }
+    .stat-card.red .stat-value { color: var(--red); }
+    .stat-card.yellow .stat-value { color: var(--yellow); }
+    .stat-card.blue .stat-value { color: var(--blue); }
+    .stat-card.purple .stat-value { color: var(--accent); }
+
+    .stat-label {
+      font-size: 12px;
+      color: var(--text-d);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      font-weight: 500;
+    }
+
+    .stat-pct {
+      position: absolute;
+      top: 16px;
+      right: 16px;
+      font-size: 11px;
+      font-weight: 600;
+      padding: 4px 8px;
+      border-radius: 6px;
+    }
+
+    .stat-card.green .stat-pct { background: var(--green-soft); color: var(--green); }
+    .stat-card.red .stat-pct { background: var(--red-soft); color: var(--red); }
+    .stat-card.yellow .stat-pct { background: var(--yellow-soft); color: var(--yellow); }
+
+    /* Section */
+    .section {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 24px;
+      margin-bottom: 24px;
+    }
+
+    .section-title {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      color: var(--text-d);
+      margin-bottom: 20px;
+      font-weight: 600;
+    }
+
+    /* Charts */
+    .charts-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+      gap: 24px;
+    }
+
+    .chart-box {
+      background: var(--surface2);
+      border-radius: 12px;
+      padding: 20px;
+    }
+
+    .chart-box h4 {
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 16px;
+      color: var(--text-m);
+    }
+
+    .chart-container {
+      height: 280px;
+      position: relative;
+    }
+
+    /* Brand Filter */
+    .brand-filter {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 20px;
+    }
+
+    .brand-btn {
+      padding: 8px 16px;
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      background: transparent;
+      color: var(--text-m);
+      font-family: 'Outfit', sans-serif;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .brand-btn:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    .brand-btn.active {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #fff;
+    }
+
+    /* Table */
+    .table-container {
+      overflow-x: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    th, td {
+      padding: 12px 16px;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+    }
+
+    th {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--text-d);
+      font-weight: 600;
+      background: var(--surface2);
+    }
+
+    tr:hover td {
+      background: var(--surface2);
+    }
+
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 500;
+    }
+
+    .status-badge.green { background: var(--green-soft); color: var(--green); }
+    .status-badge.red { background: var(--red-soft); color: var(--red); }
+    .status-badge.yellow { background: var(--yellow-soft); color: var(--yellow); }
+
+    /* Loading */
+    .loading {
+      display: none;
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 12px 20px;
+      font-size: 13px;
+      color: var(--text-m);
+      z-index: 100;
+      animation: fadeIn 0.3s;
+    }
+
+    .loading.active { display: flex; align-items: center; gap: 10px; }
+
+    .loading::before {
+      content: '';
+      width: 16px;
+      height: 16px;
+      border: 2px solid var(--accent);
+      border-top-color: transparent;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+
+    /* Empty State */
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--text-d);
+    }
+
+    .empty-state svg {
+      width: 64px;
+      height: 64px;
+      margin-bottom: 16px;
+      opacity: 0.3;
+    }
+
+    .empty-state h3 {
+      font-size: 18px;
+      color: var(--text-m);
+      margin-bottom: 8px;
+    }
+
+    /* Footer */
+    .footer {
+      text-align: center;
+      padding: 20px;
+      font-size: 12px;
+      color: var(--text-d);
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      .charts-grid { grid-template-columns: 1fr; }
+      .header h1 { font-size: 22px; }
+      .stat-value { font-size: 26px; }
+    }
+  </style>
 </head>
 <body>
-    <div class="container">
-        <header>
-            <h1>📦 Dashboard de Confirmações</h1>
-            <p>Análise de entregas por marca - Powered by AI</p>
-        </header>
+  <div class="loading" id="loading">Carregando dados...</div>
 
-        <div class="upload-area" id="uploadArea">
-            <div class="upload-icon">📁</div>
-            <h3>Arraste sua planilha aqui</h3>
-            <p>ou clique para selecionar (.xlsx, .csv)</p>
-            <input type="file" id="fileInput" accept=".xlsx,.csv">
-        </div>
+  <div class="app">
+    <header class="header">
+      <div>
+        <h1>📦 Dashboard <span>Confirmações</span></h1>
+      </div>
+      <div class="meta">
+        <div class="live-badge" id="statusBadge" style="display: none;">LIVE</div>
+        <div id="lastUpdate"></div>
+      </div>
+    </header>
 
-        <div id="dashboard" class="hidden">
-            <!-- Stats Gerais -->
-            <div class="stats-grid" id="statsGrid">
-                <div class="stat-card blue">
-                    <div class="stat-value" id="totalRegistros">0</div>
-                    <div class="stat-label">Total de Registros</div>
-                </div>
-                <div class="stat-card green">
-                    <div class="stat-value" id="totalReconheco">0</div>
-                    <div class="stat-label">✅ Reconheço</div>
-                </div>
-                <div class="stat-card red">
-                    <div class="stat-value" id="totalNaoReconheco">0</div>
-                    <div class="stat-label">❌ Não Reconheço</div>
-                </div>
-                <div class="stat-card yellow">
-                    <div class="stat-value" id="totalInvestigacao">0</div>
-                    <div class="stat-label">🔍 Investigação</div>
-                </div>
-            </div>
-
-            <!-- Gráficos Gerais -->
-            <div class="charts-section">
-                <div class="chart-card">
-                    <h3>📊 Distribuição Geral</h3>
-                    <canvas id="chartGeral"></canvas>
-                </div>
-                <div class="chart-card">
-                    <h3>📈 Por Marca</h3>
-                    <canvas id="chartMarcas"></canvas>
-                </div>
-            </div>
-
-            <!-- Filtro por Marca -->
-            <div class="brand-filter">
-                <h3>🏷️ Selecione uma Marca</h3>
-                <div class="brand-buttons" id="brandButtons"></div>
-            </div>
-
-            <!-- Dashboard Individual por Marca -->
-            <div class="brand-dashboard" id="brandDashboard">
-                <div class="brand-header">
-                    <h2 id="brandName">Marca</h2>
-                    <span id="brandPeriod"></span>
-                </div>
-                
-                <div class="brand-stats">
-                    <div class="brand-stat">
-                        <div class="brand-stat-value" id="brandTotal" style="color: #60a5fa;">0</div>
-                        <div class="brand-stat-label">Total</div>
-                    </div>
-                    <div class="brand-stat">
-                        <div class="brand-stat-value" id="brandReconheco" style="color: #4ade80;">0</div>
-                        <div class="brand-stat-label">Reconheço</div>
-                    </div>
-                    <div class="brand-stat">
-                        <div class="brand-stat-value" id="brandNaoReconheco" style="color: #f87171;">0</div>
-                        <div class="brand-stat-label">Não Reconheço</div>
-                    </div>
-                    <div class="brand-stat">
-                        <div class="brand-stat-value" id="brandInvestigacao" style="color: #fbbf24;">0</div>
-                        <div class="brand-stat-label">Investigação</div>
-                    </div>
-                </div>
-
-                <h4 style="margin-bottom: 10px; color: #888;">Taxa de Confirmação</h4>
-                <div class="progress-bar" id="brandProgress"></div>
-
-                <div class="charts-section">
-                    <div class="chart-card">
-                        <h3>📊 Distribuição da Marca</h3>
-                        <canvas id="chartBrand"></canvas>
-                    </div>
-                    <div class="chart-card">
-                        <h3>📅 Evolução Diária</h3>
-                        <canvas id="chartDaily"></canvas>
-                    </div>
-                </div>
-
-                <div class="insights" id="brandInsights">
-                    <h4>🤖 Insights IA</h4>
-                    <div id="insightsList"></div>
-                </div>
-
-                <div class="table-container">
-                    <h4 style="margin-bottom: 15px; color: #667eea;">📋 Últimos Registros</h4>
-                    <table id="brandTable">
-                        <thead>
-                            <tr>
-                                <th>Data</th>
-                                <th>Status</th>
-                                <th>Pedido</th>
-                            </tr>
-                        </thead>
-                        <tbody id="brandTableBody"></tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
+    <!-- Conexão -->
+    <div class="conn-section">
+      <h3>🔗 Conectar Google Sheets</h3>
+      <div class="conn-bar">
+        <input type="text" id="sheetUrl" placeholder="Cole o link do CSV publicado do Google Sheets...">
+        <button class="btn btn-primary" onclick="connectSheet()">Conectar</button>
+        <button class="btn btn-secondary" id="btnRefresh" onclick="fetchData()" style="display: none;">↻ Atualizar</button>
+      </div>
+      <div class="conn-help">
+        <strong>Como publicar:</strong> No Google Sheets, vá em <code>Arquivo → Compartilhar → Publicar na web</code> → escolha <code>CSV</code> → copie o link
+      </div>
     </div>
 
-    <script>
-        let allData = [];
-        let chartGeral = null;
-        let chartMarcas = null;
-        let chartBrand = null;
-        let chartDaily = null;
+    <!-- Stats -->
+    <div class="stats-grid" id="statsGrid">
+      <div class="stat-card purple">
+        <div class="stat-value" id="statTotal">0</div>
+        <div class="stat-label">Total Registros</div>
+      </div>
+      <div class="stat-card green">
+        <div class="stat-value" id="statReconheco">0</div>
+        <div class="stat-label">✅ Reconheço</div>
+        <div class="stat-pct" id="pctReconheco">0%</div>
+      </div>
+      <div class="stat-card red">
+        <div class="stat-value" id="statNaoReconheco">0</div>
+        <div class="stat-label">❌ Não Reconheço</div>
+        <div class="stat-pct" id="pctNaoReconheco">0%</div>
+      </div>
+      <div class="stat-card yellow">
+        <div class="stat-value" id="statInvestigacao">0</div>
+        <div class="stat-label">🔍 Investigação</div>
+        <div class="stat-pct" id="pctInvestigacao">0%</div>
+      </div>
+    </div>
 
-        // Upload handlers
-        const uploadArea = document.getElementById('uploadArea');
-        const fileInput = document.getElementById('fileInput');
+    <!-- Brand Filter -->
+    <div class="section">
+      <div class="section-title">Filtrar por Marca</div>
+      <div class="brand-filter" id="brandFilter"></div>
+    </div>
 
-        uploadArea.addEventListener('click', () => fileInput.click());
-        uploadArea.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            uploadArea.classList.add('dragover');
+    <!-- Charts -->
+    <div class="section">
+      <div class="section-title">Visualizações</div>
+      <div class="charts-grid">
+        <div class="chart-box">
+          <h4>Distribuição Geral</h4>
+          <div class="chart-container"><canvas id="chartDonut"></canvas></div>
+        </div>
+        <div class="chart-box">
+          <h4>Taxa por Marca</h4>
+          <div class="chart-container"><canvas id="chartBar"></canvas></div>
+        </div>
+        <div class="chart-box">
+          <h4>Evolução Diária</h4>
+          <div class="chart-container"><canvas id="chartLine"></canvas></div>
+        </div>
+        <div class="chart-box">
+          <h4>Proporção por Marca</h4>
+          <div class="chart-container"><canvas id="chartStacked"></canvas></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Table -->
+    <div class="section">
+      <div class="section-title">Últimos Registros</div>
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th>Data</th>
+              <th>Marca</th>
+              <th>Status</th>
+              <th>Pedido</th>
+            </tr>
+          </thead>
+          <tbody id="tableBody"></tbody>
+        </table>
+      </div>
+      <div class="empty-state" id="emptyState">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+        </svg>
+        <h3>Nenhum dado carregado</h3>
+        <p>Conecte um Google Sheets para visualizar os dados</p>
+      </div>
+    </div>
+
+    <div class="footer">
+      Atualização automática a cada 5 minutos · Dashboard de Confirmações de Entrega
+    </div>
+  </div>
+
+  <script>
+    // ══════════════════════════════════════
+    // STATE
+    // ══════════════════════════════════════
+    let allData = [];
+    let filteredData = [];
+    let currentBrand = 'all';
+    let charts = {};
+    let refreshInterval = null;
+
+    const BRAND_COLORS = {};
+    const COLOR_POOL = ['#a78bfa','#f472b6','#fb923c','#4ade80','#60a5fa','#fbbf24','#f87171','#34d399','#e879f9','#38bdf8'];
+    let colorIndex = 0;
+
+    function getBrandColor(name) {
+      if (!BRAND_COLORS[name]) {
+        BRAND_COLORS[name] = COLOR_POOL[colorIndex % COLOR_POOL.length];
+        colorIndex++;
+      }
+      return BRAND_COLORS[name];
+    }
+
+    // ══════════════════════════════════════
+    // INIT
+    // ══════════════════════════════════════
+    window.addEventListener('DOMContentLoaded', () => {
+      const saved = localStorage.getItem('dashboard_sheet_url');
+      if (saved) {
+        document.getElementById('sheetUrl').value = saved;
+        connectSheet();
+      }
+    });
+
+    // ══════════════════════════════════════
+    // CONNECTION
+    // ══════════════════════════════════════
+    function connectSheet() {
+      const url = document.getElementById('sheetUrl').value.trim();
+      if (!url) return;
+      
+      localStorage.setItem('dashboard_sheet_url', url);
+      document.getElementById('btnRefresh').style.display = '';
+      
+      fetchData();
+      
+      if (refreshInterval) clearInterval(refreshInterval);
+      refreshInterval = setInterval(fetchData, 5 * 60 * 1000); // 5 minutos
+    }
+
+    function fetchData() {
+      const url = localStorage.getItem('dashboard_sheet_url');
+      if (!url) return;
+
+      document.getElementById('loading').classList.add('active');
+
+      Papa.parse(url, {
+        download: true,
+        header: true,
+        skipEmptyLines: true,
+        complete: function(results) {
+          document.getElementById('loading').classList.remove('active');
+          document.getElementById('statusBadge').style.display = 'flex';
+          document.getElementById('emptyState').style.display = 'none';
+          
+          allData = normalizeData(results.data);
+          filteredData = allData;
+          
+          renderBrandFilter();
+          render();
+          
+          document.getElementById('lastUpdate').textContent = 
+            'Atualizado: ' + new Date().toLocaleTimeString('pt-BR');
+        },
+        error: function(err) {
+          document.getElementById('loading').classList.remove('active');
+          alert('Erro ao carregar dados: ' + err.message);
+        }
+      });
+    }
+
+    // ══════════════════════════════════════
+    // NORMALIZE DATA
+    // ══════════════════════════════════════
+    function normalizeData(data) {
+      return data.map(row => {
+        const normalized = {};
+        
+        Object.keys(row).forEach(key => {
+          const lowerKey = key.toLowerCase().trim();
+          if (lowerKey.includes('data')) normalized.data = row[key];
+          else if (lowerKey.includes('confirma')) normalized.confirmacao = row[key];
+          else if (lowerKey.includes('marca')) normalized.marca = row[key];
+          else if (lowerKey.includes('pedido') || lowerKey.includes('order')) normalized.pedido = row[key];
         });
-        uploadArea.addEventListener('dragleave', () => uploadArea.classList.remove('dragover'));
-        uploadArea.addEventListener('drop', (e) => {
-            e.preventDefault();
-            uploadArea.classList.remove('dragover');
-            const file = e.dataTransfer.files[0];
-            if (file) processFile(file);
-        });
-        fileInput.addEventListener('change', (e) => {
-            if (e.target.files[0]) processFile(e.target.files[0]);
-        });
+        
+        return normalized;
+      }).filter(row => row.confirmacao);
+    }
 
-        function processFile(file) {
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                const data = new Uint8Array(e.target.result);
-                const workbook = XLSX.read(data, { type: 'array' });
-                const sheetName = workbook.SheetNames[0];
-                const sheet = workbook.Sheets[sheetName];
-                allData = XLSX.utils.sheet_to_json(sheet);
-                
-                // Normalizar nomes das colunas
-                allData = allData.map(row => {
-                    const normalized = {};
-                    Object.keys(row).forEach(key => {
-                        const lowerKey = key.toLowerCase().trim();
-                        if (lowerKey.includes('data')) normalized.data = row[key];
-                        else if (lowerKey.includes('confirma')) normalized.confirmacao = row[key];
-                        else if (lowerKey.includes('marca')) normalized.marca = row[key];
-                        else if (lowerKey.includes('pedido') || lowerKey.includes('order')) normalized.pedido = row[key];
-                    });
-                    return normalized;
-                });
+    // ══════════════════════════════════════
+    // CLASSIFY STATUS
+    // ══════════════════════════════════════
+    function getStatus(confirmacao) {
+      if (!confirmacao) return 'unknown';
+      const c = confirmacao.toLowerCase();
+      if (c.includes('sim') || c.includes('reconheço') || c.includes('encontrei') || c.includes('tudo certo')) {
+        if (!c.includes('não')) return 'reconheco';
+      }
+      if (c.includes('não reconheço') || c.includes('nao reconheco')) return 'nao-reconheco';
+      if (c.includes('investigação') || c.includes('investigacao')) return 'investigacao';
+      return 'unknown';
+    }
 
-                renderDashboard();
-            };
-            reader.readAsArrayBuffer(file);
+    function getStatusLabel(status) {
+      switch(status) {
+        case 'reconheco': return '✅ Reconheço';
+        case 'nao-reconheco': return '❌ Não Reconheço';
+        case 'investigacao': return '🔍 Investigação';
+        default: return '❓ Desconhecido';
+      }
+    }
+
+    function getStatusClass(status) {
+      switch(status) {
+        case 'reconheco': return 'green';
+        case 'nao-reconheco': return 'red';
+        case 'investigacao': return 'yellow';
+        default: return '';
+      }
+    }
+
+    // ══════════════════════════════════════
+    // BRAND FILTER
+    // ══════════════════════════════════════
+    function renderBrandFilter() {
+      const brands = [...new Set(allData.map(d => d.marca).filter(Boolean))];
+      const container = document.getElementById('brandFilter');
+      
+      container.innerHTML = `
+        <button class="brand-btn active" onclick="filterBrand('all')">🌐 Todas</button>
+        ${brands.map(b => `
+          <button class="brand-btn" onclick="filterBrand('${b}')">${b}</button>
+        `).join('')}
+      `;
+    }
+
+    function filterBrand(brand) {
+      currentBrand = brand;
+      
+      document.querySelectorAll('.brand-btn').forEach(btn => {
+        btn.classList.toggle('active', 
+          (brand === 'all' && btn.textContent.includes('Todas')) ||
+          btn.textContent === brand
+        );
+      });
+      
+      filteredData = brand === 'all' ? allData : allData.filter(d => d.marca === brand);
+      render();
+    }
+
+    // ══════════════════════════════════════
+    // RENDER
+    // ══════════════════════════════════════
+    function render() {
+      const stats = {
+        total: filteredData.length,
+        reconheco: filteredData.filter(d => getStatus(d.confirmacao) === 'reconheco').length,
+        naoReconheco: filteredData.filter(d => getStatus(d.confirmacao) === 'nao-reconheco').length,
+        investigacao: filteredData.filter(d => getStatus(d.confirmacao) === 'investigacao').length
+      };
+
+      // Stats
+      document.getElementById('statTotal').textContent = stats.total;
+      document.getElementById('statReconheco').textContent = stats.reconheco;
+      document.getElementById('statNaoReconheco').textContent = stats.naoReconheco;
+      document.getElementById('statInvestigacao').textContent = stats.investigacao;
+      
+      const pctRec = stats.total ? ((stats.reconheco / stats.total) * 100).toFixed(1) : 0;
+      const pctNao = stats.total ? ((stats.naoReconheco / stats.total) * 100).toFixed(1) : 0;
+      const pctInv = stats.total ? ((stats.investigacao / stats.total) * 100).toFixed(1) : 0;
+      
+      document.getElementById('pctReconheco').textContent = pctRec + '%';
+      document.getElementById('pctNaoReconheco').textContent = pctNao + '%';
+      document.getElementById('pctInvestigacao').textContent = pctInv + '%';
+
+      renderCharts(stats);
+      renderTable();
+    }
+
+    // ══════════════════════════════════════
+    // CHARTS
+    // ══════════════════════════════════════
+    function renderCharts(stats) {
+      // Destroy existing charts
+      Object.values(charts).forEach(c => c && c.destroy());
+
+      // Donut Chart
+      charts.donut = new Chart(document.getElementById('chartDonut'), {
+        type: 'doughnut',
+        data: {
+          labels: ['Reconheço', 'Não Reconheço', 'Investigação'],
+          datasets: [{
+            data: [stats.reconheco, stats.naoReconheco, stats.investigacao],
+            backgroundColor: ['#4ade80', '#f87171', '#fbbf24'],
+            borderWidth: 0,
+            borderRadius: 4
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          cutout: '65%',
+          plugins: {
+            legend: {
+              position: 'bottom',
+              labels: { color: '#a0a0b0', padding: 16, usePointStyle: true, font: { size: 12 } }
+            }
+          }
         }
+      });
 
-        function getStatus(confirmacao) {
-            if (!confirmacao) return 'desconhecido';
-            const c = confirmacao.toLowerCase();
-            if (c.includes('sim') || c.includes('reconheço') || c.includes('encontrei') || c.includes('tudo certo')) {
-                if (!c.includes('não')) return 'reconheco';
+      // Bar Chart - Por Marca
+      const brands = {};
+      allData.forEach(d => {
+        const m = d.marca || 'Sem Marca';
+        if (!brands[m]) brands[m] = { rec: 0, nrec: 0, inv: 0, total: 0 };
+        brands[m].total++;
+        const s = getStatus(d.confirmacao);
+        if (s === 'reconheco') brands[m].rec++;
+        else if (s === 'nao-reconheco') brands[m].nrec++;
+        else if (s === 'investigacao') brands[m].inv++;
+      });
+
+      const brandNames = Object.keys(brands).filter(b => b !== 'Sem Marca' && b.trim());
+      const taxas = brandNames.map(b => brands[b].total ? (brands[b].rec / brands[b].total * 100).toFixed(1) : 0);
+
+      charts.bar = new Chart(document.getElementById('chartBar'), {
+        type: 'bar',
+        data: {
+          labels: brandNames,
+          datasets: [{
+            label: 'Taxa Reconhecimento %',
+            data: taxas,
+            backgroundColor: brandNames.map(b => getBrandColor(b)),
+            borderRadius: 6
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false }
+          },
+          scales: {
+            y: { 
+              beginAtZero: true, 
+              max: 100,
+              grid: { color: 'rgba(255,255,255,0.05)' },
+              ticks: { color: '#606070' }
+            },
+            x: { 
+              grid: { display: false },
+              ticks: { color: '#606070' }
             }
-            if (c.includes('não reconheço') || c.includes('nao reconheco')) return 'nao-reconheco';
-            if (c.includes('investigação') || c.includes('investigacao')) return 'investigacao';
-            return 'desconhecido';
+          }
         }
+      });
 
-        function getStatusLabel(status) {
-            switch(status) {
-                case 'reconheco': return '✅ Reconheço';
-                case 'nao-reconheco': return '❌ Não Reconheço';
-                case 'investigacao': return '🔍 Investigação';
-                default: return '❓ Desconhecido';
+      // Line Chart - Evolução Diária
+      const daily = {};
+      filteredData.forEach(d => {
+        const data = d.data || 'Sem Data';
+        if (!daily[data]) daily[data] = { rec: 0, nrec: 0, inv: 0 };
+        const s = getStatus(d.confirmacao);
+        if (s === 'reconheco') daily[data].rec++;
+        else if (s === 'nao-reconheco') daily[data].nrec++;
+        else if (s === 'investigacao') daily[data].inv++;
+      });
+
+      const sortedDates = Object.keys(daily).sort((a, b) => {
+        const [dA, mA, yA] = a.split('/');
+        const [dB, mB, yB] = b.split('/');
+        return new Date(yA, mA-1, dA) - new Date(yB, mB-1, dB);
+      }).slice(-14);
+
+      charts.line = new Chart(document.getElementById('chartLine'), {
+        type: 'line',
+        data: {
+          labels: sortedDates,
+          datasets: [
+            {
+              label: 'Reconheço',
+              data: sortedDates.map(d => daily[d]?.rec || 0),
+              borderColor: '#4ade80',
+              backgroundColor: 'rgba(74,222,128,0.1)',
+              fill: true,
+              tension: 0.4
+            },
+            {
+              label: 'Não Reconheço',
+              data: sortedDates.map(d => daily[d]?.nrec || 0),
+              borderColor: '#f87171',
+              backgroundColor: 'rgba(248,113,113,0.1)',
+              fill: true,
+              tension: 0.4
+            },
+            {
+              label: 'Investigação',
+              data: sortedDates.map(d => daily[d]?.inv || 0),
+              borderColor: '#fbbf24',
+              backgroundColor: 'rgba(251,191,36,0.1)',
+              fill: true,
+              tension: 0.4
             }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              position: 'bottom',
+              labels: { color: '#a0a0b0', padding: 12, usePointStyle: true }
+            }
+          },
+          scales: {
+            y: { 
+              beginAtZero: true,
+              grid: { color: 'rgba(255,255,255,0.05)' },
+              ticks: { color: '#606070' }
+            },
+            x: { 
+              grid: { display: false },
+              ticks: { color: '#606070', maxRotation: 45 }
+            }
+          }
         }
+      });
 
-        function renderDashboard() {
-            document.getElementById('dashboard').classList.remove('hidden');
-            uploadArea.style.display = 'none';
-
-            // Calcular estatísticas gerais
-            const stats = {
-                total: allData.length,
-                reconheco: allData.filter(d => getStatus(d.confirmacao) === 'reconheco').length,
-                naoReconheco: allData.filter(d => getStatus(d.confirmacao) === 'nao-reconheco').length,
-                investigacao: allData.filter(d => getStatus(d.confirmacao) === 'investigacao').length
-            };
-
-            document.getElementById('totalRegistros').textContent = stats.total;
-            document.getElementById('totalReconheco').textContent = stats.reconheco;
-            document.getElementById('totalNaoReconheco').textContent = stats.naoReconheco;
-            document.getElementById('totalInvestigacao').textContent = stats.investigacao;
-
-            // Gráfico Geral (Pizza)
-            if (chartGeral) chartGeral.destroy();
-            chartGeral = new Chart(document.getElementById('chartGeral'), {
-                type: 'doughnut',
-                data: {
-                    labels: ['Reconheço', 'Não Reconheço', 'Investigação'],
-                    datasets: [{
-                        data: [stats.reconheco, stats.naoReconheco, stats.investigacao],
-                        backgroundColor: ['#4ade80', '#f87171', '#fbbf24'],
-                        borderWidth: 0
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    plugins: {
-                        legend: {
-                            position: 'bottom',
-                            labels: { color: '#fff' }
-                        }
-                    }
-                }
-            });
-
-            // Agrupar por marca
-            const marcas = {};
-            allData.forEach(d => {
-                const marca = d.marca || 'Sem Marca';
-                if (!marcas[marca]) {
-                    marcas[marca] = { total: 0, reconheco: 0, naoReconheco: 0, investigacao: 0 };
-                }
-                marcas[marca].total++;
-                const status = getStatus(d.confirmacao);
-                if (status === 'reconheco') marcas[marca].reconheco++;
-                else if (status === 'nao-reconheco') marcas[marca].naoReconheco++;
-                else if (status === 'investigacao') marcas[marca].investigacao++;
-            });
-
-            // Gráfico por Marca (Barras empilhadas)
-            const marcaNames = Object.keys(marcas).filter(m => m !== 'Sem Marca' && m.trim() !== '');
-            if (chartMarcas) chartMarcas.destroy();
-            chartMarcas = new Chart(document.getElementById('chartMarcas'), {
-                type: 'bar',
-                data: {
-                    labels: marcaNames.length > 0 ? marcaNames : ['Todas'],
-                    datasets: [
-                        {
-                            label: 'Reconheço',
-                            data: marcaNames.length > 0 ? marcaNames.map(m => marcas[m].reconheco) : [stats.reconheco],
-                            backgroundColor: '#4ade80'
-                        },
-                        {
-                            label: 'Não Reconheço',
-                            data: marcaNames.length > 0 ? marcaNames.map(m => marcas[m].naoReconheco) : [stats.naoReconheco],
-                            backgroundColor: '#f87171'
-                        },
-                        {
-                            label: 'Investigação',
-                            data: marcaNames.length > 0 ? marcaNames.map(m => marcas[m].investigacao) : [stats.investigacao],
-                            backgroundColor: '#fbbf24'
-                        }
-                    ]
-                },
-                options: {
-                    responsive: true,
-                    scales: {
-                        x: { stacked: true, ticks: { color: '#888' }, grid: { color: 'rgba(255,255,255,0.1)' } },
-                        y: { stacked: true, ticks: { color: '#888' }, grid: { color: 'rgba(255,255,255,0.1)' } }
-                    },
-                    plugins: {
-                        legend: {
-                            position: 'bottom',
-                            labels: { color: '#fff' }
-                        }
-                    }
-                }
-            });
-
-            // Botões de marca
-            const brandButtons = document.getElementById('brandButtons');
-            brandButtons.innerHTML = '';
-            
-            const allBrandsBtn = document.createElement('button');
-            allBrandsBtn.className = 'brand-btn active';
-            allBrandsBtn.textContent = '🌐 Todas';
-            allBrandsBtn.onclick = () => showBrandDashboard(null);
-            brandButtons.appendChild(allBrandsBtn);
-
-            marcaNames.forEach(marca => {
-                const btn = document.createElement('button');
-                btn.className = 'brand-btn';
-                btn.textContent = marca;
-                btn.onclick = () => showBrandDashboard(marca);
-                brandButtons.appendChild(btn);
-            });
+      // Stacked Bar - Proporção por Marca
+      charts.stacked = new Chart(document.getElementById('chartStacked'), {
+        type: 'bar',
+        data: {
+          labels: brandNames,
+          datasets: [
+            {
+              label: 'Reconheço',
+              data: brandNames.map(b => brands[b].rec),
+              backgroundColor: '#4ade80',
+              borderRadius: 4
+            },
+            {
+              label: 'Não Reconheço',
+              data: brandNames.map(b => brands[b].nrec),
+              backgroundColor: '#f87171',
+              borderRadius: 4
+            },
+            {
+              label: 'Investigação',
+              data: brandNames.map(b => brands[b].inv),
+              backgroundColor: '#fbbf24',
+              borderRadius: 4
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              position: 'bottom',
+              labels: { color: '#a0a0b0', padding: 12, usePointStyle: true }
+            }
+          },
+          scales: {
+            y: { 
+              stacked: true,
+              beginAtZero: true,
+              grid: { color: 'rgba(255,255,255,0.05)' },
+              ticks: { color: '#606070' }
+            },
+            x: { 
+              stacked: true,
+              grid: { display: false },
+              ticks: { color: '#606070' }
+            }
+          }
         }
+      });
+    }
 
-        function showBrandDashboard(marca) {
-            // Update active button
-            document.querySelectorAll('.brand-btn').forEach(btn => btn.classList.remove('active'));
-            event.target.classList.add('active');
-
-            const dashboard = document.getElementById('brandDashboard');
-            dashboard.classList.add('visible');
-
-            const filteredData = marca ? allData.filter(d => d.marca === marca) : allData;
-            
-            const stats = {
-                total: filteredData.length,
-                reconheco: filteredData.filter(d => getStatus(d.confirmacao) === 'reconheco').length,
-                naoReconheco: filteredData.filter(d => getStatus(d.confirmacao) === 'nao-reconheco').length,
-                investigacao: filteredData.filter(d => getStatus(d.confirmacao) === 'investigacao').length
-            };
-
-            document.getElementById('brandName').textContent = marca || '🌐 Todas as Marcas';
-            document.getElementById('brandTotal').textContent = stats.total;
-            document.getElementById('brandReconheco').textContent = stats.reconheco;
-            document.getElementById('brandNaoReconheco').textContent = stats.naoReconheco;
-            document.getElementById('brandInvestigacao').textContent = stats.investigacao;
-
-            // Progress bar
-            const progressBar = document.getElementById('brandProgress');
-            const pctReconheco = ((stats.reconheco / stats.total) * 100).toFixed(1);
-            const pctNaoReconheco = ((stats.naoReconheco / stats.total) * 100).toFixed(1);
-            const pctInvestigacao = ((stats.investigacao / stats.total) * 100).toFixed(1);
-            
-            progressBar.innerHTML = `
-                <div class="progress-segment green" style="width: ${pctReconheco}%">${pctReconheco}%</div>
-                <div class="progress-segment red" style="width: ${pctNaoReconheco}%">${pctNaoReconheco}%</div>
-                <div class="progress-segment yellow" style="width: ${pctInvestigacao}%">${pctInvestigacao}%</div>
-            `;
-
-            // Gráfico da marca (Pizza)
-            if (chartBrand) chartBrand.destroy();
-            chartBrand = new Chart(document.getElementById('chartBrand'), {
-                type: 'pie',
-                data: {
-                    labels: ['Reconheço', 'Não Reconheço', 'Investigação'],
-                    datasets: [{
-                        data: [stats.reconheco, stats.naoReconheco, stats.investigacao],
-                        backgroundColor: ['#4ade80', '#f87171', '#fbbf24'],
-                        borderWidth: 0
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    plugins: {
-                        legend: {
-                            position: 'bottom',
-                            labels: { color: '#fff' }
-                        }
-                    }
-                }
-            });
-
-            // Gráfico diário
-            const dailyStats = {};
-            filteredData.forEach(d => {
-                const data = d.data || 'Sem Data';
-                if (!dailyStats[data]) {
-                    dailyStats[data] = { reconheco: 0, naoReconheco: 0, investigacao: 0 };
-                }
-                const status = getStatus(d.confirmacao);
-                if (status === 'reconheco') dailyStats[data].reconheco++;
-                else if (status === 'nao-reconheco') dailyStats[data].naoReconheco++;
-                else if (status === 'investigacao') dailyStats[data].investigacao++;
-            });
-
-            const sortedDates = Object.keys(dailyStats).sort((a, b) => {
-                const [dA, mA, yA] = a.split('/');
-                const [dB, mB, yB] = b.split('/');
-                return new Date(yA, mA-1, dA) - new Date(yB, mB-1, dB);
-            });
-
-            if (chartDaily) chartDaily.destroy();
-            chartDaily = new Chart(document.getElementById('chartDaily'), {
-                type: 'line',
-                data: {
-                    labels: sortedDates,
-                    datasets: [
-                        {
-                            label: 'Reconheço',
-                            data: sortedDates.map(d => dailyStats[d].reconheco),
-                            borderColor: '#4ade80',
-                            backgroundColor: 'rgba(74, 222, 128, 0.1)',
-                            fill: true,
-                            tension: 0.4
-                        },
-                        {
-                            label: 'Não Reconheço',
-                            data: sortedDates.map(d => dailyStats[d].naoReconheco),
-                            borderColor: '#f87171',
-                            backgroundColor: 'rgba(248, 113, 113, 0.1)',
-                            fill: true,
-                            tension: 0.4
-                        },
-                        {
-                            label: 'Investigação',
-                            data: sortedDates.map(d => dailyStats[d].investigacao),
-                            borderColor: '#fbbf24',
-                            backgroundColor: 'rgba(251, 191, 36, 0.1)',
-                            fill: true,
-                            tension: 0.4
-                        }
-                    ]
-                },
-                options: {
-                    responsive: true,
-                    scales: {
-                        x: { ticks: { color: '#888' }, grid: { color: 'rgba(255,255,255,0.1)' } },
-                        y: { ticks: { color: '#888' }, grid: { color: 'rgba(255,255,255,0.1)' } }
-                    },
-                    plugins: {
-                        legend: {
-                            position: 'bottom',
-                            labels: { color: '#fff' }
-                        }
-                    }
-                }
-            });
-
-            // Insights IA
-            generateInsights(marca, stats, filteredData);
-
-            // Tabela de registros
-            const tbody = document.getElementById('brandTableBody');
-            tbody.innerHTML = '';
-            filteredData.slice(0, 20).forEach(d => {
-                const status = getStatus(d.confirmacao);
-                const tr = document.createElement('tr');
-                tr.innerHTML = `
-                    <td>${d.data || '-'}</td>
-                    <td><span class="status-badge ${status}">${getStatusLabel(status)}</span></td>
-                    <td>${d.pedido || '-'}</td>
-                `;
-                tbody.appendChild(tr);
-            });
-        }
-
-        function generateInsights(marca, stats, data) {
-            const insightsList = document.getElementById('insightsList');
-            const insights = [];
-            
-            const taxaReconhecimento = ((stats.reconheco / stats.total) * 100).toFixed(1);
-            const taxaProblema = (((stats.naoReconheco + stats.investigacao) / stats.total) * 100).toFixed(1);
-
-            // Insight principal
-            if (taxaReconhecimento >= 70) {
-                insights.push({
-                    icon: '✅',
-                    text: `Excelente! Taxa de reconhecimento de ${taxaReconhecimento}% está acima da média.`
-                });
-            } else if (taxaReconhecimento >= 50) {
-                insights.push({
-                    icon: '⚠️',
-                    text: `Atenção: Taxa de reconhecimento de ${taxaReconhecimento}% pode ser melhorada.`
-                });
-            } else {
-                insights.push({
-                    icon: '🚨',
-                    text: `Crítico: Apenas ${taxaReconhecimento}% de reconhecimento. Verificar processo de entrega.`
-                });
-            }
-
-            // Insight sobre investigações
-            if (stats.investigacao > stats.total * 0.2) {
-                insights.push({
-                    icon: '🔍',
-                    text: `${stats.investigacao} casos em investigação (${((stats.investigacao/stats.total)*100).toFixed(1)}%). Acompanhar resolução.`
-                });
-            }
-
-            // Insight sobre não reconhecimento
-            if (stats.naoReconheco > stats.total * 0.3) {
-                insights.push({
-                    icon: '❌',
-                    text: `Alto índice de não reconhecimento (${((stats.naoReconheco/stats.total)*100).toFixed(1)}%). Sugestão: revisar comprovantes de entrega.`
-                });
-            }
-
-            // Sugestão de ação
-            if (taxaProblema > 30) {
-                insights.push({
-                    icon: '💡',
-                    text: `Recomendação: Implementar foto obrigatória na entrega para reduzir contestações.`
-                });
-            }
-
-            // Tendência (se houver dados suficientes)
-            if (data.length > 10) {
-                const metade = Math.floor(data.length / 2);
-                const primeiraMetade = data.slice(metade);
-                const segundaMetade = data.slice(0, metade);
-                
-                const taxaPrimeira = primeiraMetade.filter(d => getStatus(d.confirmacao) === 'reconheco').length / primeiraMetade.length;
-                const taxaSegunda = segundaMetade.filter(d => getStatus(d.confirmacao) === 'reconheco').length / segundaMetade.length;
-                
-                if (taxaSegunda > taxaPrimeira + 0.1) {
-                    insights.push({
-                        icon: '📈',
-                        text: `Tendência positiva: Taxa de reconhecimento melhorou nos últimos registros.`
-                    });
-                } else if (taxaSegunda < taxaPrimeira - 0.1) {
-                    insights.push({
-                        icon: '📉',
-                        text: `Atenção: Taxa de reconhecimento piorou recentemente. Investigar causa.`
-                    });
-                }
-            }
-
-            insightsList.innerHTML = insights.map(i => `
-                <div class="insight-item">
-                    <span>${i.icon}</span>
-                    <span>${i.text}</span>
-                </div>
-            `).join('');
-        }
-    </script>
+    // ══════════════════════════════════════
+    // TABLE
+    // ══════════════════════════════════════
+    function renderTable() {
+      const tbody = document.getElementById('tableBody');
+      const rows = filteredData.slice(0, 30);
+      
+      tbody.innerHTML = rows.map(d => {
+        const status = getStatus(d.confirmacao);
+        return `
+          <tr>
+            <td>${d.data || '-'}</td>
+            <td>${d.marca || '-'}</td>
+            <td><span class="status-badge ${getStatusClass(status)}">${getStatusLabel(status)}</span></td>
+            <td>${d.pedido || '-'}</td>
+          </tr>
+        `;
+      }).join('');
+    }
+  </script>
 </body>
 </html>
